@@ -12,7 +12,6 @@ from kraken.agent import DatatalkParser, retrieve_relevant_domain_specific_instr
 from kraken.utils import postprocess_entities
 from langchain.schema.runnable.config import RunnableConfig
 
-import chainlit as cl
 from chainlite import write_prompt_logs_to_file
 from decimal import Decimal
 
@@ -229,13 +228,11 @@ def update_column_with_links(df):
 async def run_single_message(
     message: str,
     conversation_history = [],
-    chainlit_msg_object = None,
     semantic_parser_class = None,
     save_to_local = None,
 ):
     step_counter = 1
     
-    # only pass in chainlit callback if chainlit_msg_object is not None
     callbacks = []
         
     # this is a "placeholder" state in case the agent bypasses all actions
@@ -283,10 +280,9 @@ async def run_single_message(
         ] and chunk["event"] == "on_chain_end" \
         and chunk["tags"][0].startswith("seq:"):
             action = chunk["data"]["input"]["actions"][-1]
-            if chainlit_msg_object:
-                display_step_name = map_step_name_to_natural_names(action.action_name)
-                print(f"Completed Step {step_counter}: {display_step_name}")
-                step_counter += 1
+            display_step_name = map_step_name_to_natural_names(action.action_name)
+            print(f"Completed Step {step_counter}: {display_step_name}")
+            step_counter += 1
             state = chunk["data"]["input"]
             
         elif chunk["name"] == "verify_domain_specific_instructions" \
@@ -294,8 +290,7 @@ async def run_single_message(
             and chunk["tags"][0].startswith("seq:"):
             
             action = chunk["data"]["output"]["actions"][-1] if chunk["data"]["output"] and "actions" in chunk["data"]["output"] and chunk["data"]["output"]["actions"] else None
-            if chainlit_msg_object and action:
-                print("Reviewing Final SQL")
+            print("Reviewing Final SQL")
             state = chunk["data"]["input"]
         
     action_history = []
@@ -380,8 +375,6 @@ async def run_single_message(
     for part in stream:
         if token := part.choices[0].delta.content or "":
             whole_msg += token
-            if chainlit_msg_object:
-                await chainlit_msg_object.stream_token(token)
     
     response = json.loads(whole_msg)
     report = response["report"]
@@ -427,16 +420,7 @@ async def run_single_message(
         if sql_query_object.execution_result_full_dict is not None:
             result_count = len(sql_query_object.execution_result_full_dict)
     
-    if chainlit_msg_object:
-        chainlit_msg_object.content = msg_content
     
-    if postprocessed_sql and chainlit_msg_object:
-        json_file = cl.File(
-            name=f"View Full Results, Edit, or Share",
-            url="https://datatalk-sql.genie.stanford.edu/queries/new?sql=" + urllib.parse.quote(postprocessed_sql),
-        )
-        chainlit_msg_object.elements=[json_file]
-
     # only these two fields ("question" and "action_history") are relevant for future turns
     conversation_history.append(
         {
@@ -447,14 +431,8 @@ async def run_single_message(
         }
     )
     
-    if chainlit_msg_object:
-        cl.user_session.set("conversation_history", conversation_history)
-    
     if suggested_next_turn_queries:
-        if chainlit_msg_object:
-            chainlit_msg_object.actions = list(map(lambda x: cl.Action(name="follow-up-query", value=x, label=x), suggested_next_turn_queries))
-        else:
-            msg_content += "Suggested next turn queries: " + str(suggested_next_turn_queries)
+        msg_content += "Suggested next turn queries: " + str(suggested_next_turn_queries)
     
     write_prompt_logs_to_file()
     
