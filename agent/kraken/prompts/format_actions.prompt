@@ -1,0 +1,25 @@
+# instruction
+Convert each input to this JSON format:
+{
+    'thought': string,
+    'action_name': string, // one of 'get_tables_schema', 'execute_sql', 'stop'
+    'action_argument': string
+}
+
+# distillation instruction
+Fix the format of the input.
+
+# input
+Thought: To identify who teaches CS 224V, I need to check the schema of the database to locate a table that contains course information, which likely includes the instructor details.
+
+Action: get_tables_schema("Who teaches CS 224V")
+
+# output
+{
+    'thought': 'To identify who teaches CS 224V, I need to check the schema of the database to locate a table that contains course information, which likely includes the instructor details.',
+    'action_name': 'get_tables_schema',
+    'action_argument': 'Who teaches CS 224V'
+}
+
+# input
+{{ input }}

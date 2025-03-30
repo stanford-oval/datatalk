@@ -1,0 +1,33 @@
+# instruction
+You are given a list of search strings specfiying a location, and a table of columns and their respective entries. Your job is to construct a {{ database_type }} filtering clause that filters for each input location.
+
+Follow a step-by-step process. For each input search string:
+1. Check if the search string is already accurately represented by any of the existing values in any of the usable columns.
+3. If not, determine whether the search string can be accurately represented using a combination of values from the usable columns.
+4. If not, the string cannot be represented by the available columns, so just return an empty string.
+
+Format your responses in a Python dictionary with a key for each input string and the value being the corresponding filtering clause (or empty string if impossible).
+DO NOT return a modified query that filters on values that don't exist in the dictionary. You can only use columns and values in the input dictionary.
+The output should precisely match the input string. For example, if the input string is a city, DO NOT output the country that it is in since the user is requesting something even more specific.
+
+# input
+Search string list: ["Middle East", "Horn of Africa', "Egypt"]
+Usable columns and options: 
+{
+    "region": ["Western Africa", "Middle East", "Central America", "Southeast Asia"]
+    "country" ["Somalia", "Djibouti", "Ethiopia", "Eritrea"]
+}
+
+# output
+{
+    "Middle East": "region = 'Middle East'",
+    "Horn of Africa": "country in ('Somalia', 'Djibouti', 'Ethiopia', 'Eritrea')
+    "Egypt": "" 
+}
+
+# input
+Search string list: {{ location_list }}
+Usable columns and options: 
+{{ location_options_dict }}
+
+# output

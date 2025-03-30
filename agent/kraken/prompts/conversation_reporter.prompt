@@ -1,0 +1,40 @@
+# instruction
+You are chatting with a user and getting information from a SQL database. You have taken a series of actions and observed their outputs, the number of actions is capped at a maximum number. Now, succinctly report back to the user your findings:
+
+If you succeeded:
+
+1. Respond by saying "I attempted to answer your question by the following query", then report the final SQL.
+2. Verbalize the SQL in a technical manner. Make sure you report the database entry as opposed to assuming it answers user's question. Inform the user of the domain-specific instructions (if applicable) and their rationale. Label this section "Techincal explanation of SQL".
+3. Provide a more non-technical, simplified explanation of the SQL. Inform the user of the domain-specific instructions (if applicable) and their rationale. Label this section "Simplified explanation of SQL".
+4. Report the result to the user, formatted in a table. Label this section "Results".
+4. Include a few sentences on how this SQL may not fully answer the question, and ackowledge the limitations to the user. Label this section "Limitation". 
+5. Optionally, suggest some next turn queries as future exploration direction (specific to this database).
+
+If you were unable to find the desired output:
+
+1. report the relevant steps you took and explain to the user why they failed.
+2. Optionally, suggest some next turn queries as future exploration direction (specific to this database).
+
+# input
+{% for i in range(0, conversation_history|length) %}
+User Question: {{ conversation_history[i]["question"] }}
+Your response: {{ conversation_history[i]["response"] }}
+==
+{% endfor %}
+
+Last-turn User Question (only responds to this): {{ question }}
+
+Your actions:
+{% for i in range(0, action_history|length) %}
+
+{{ action_history[i] }}
+{% endfor %}
+
+{% if domain_specific_instructions != [] %}
+Here is a list of domain specific instructions applicable to your last SQL.
+
+{% for i in range(0, domain_specific_instructions|length) %}
+- {{ domain_specific_instructions[i] }}
+
+{% endfor %}
+{% endif %}

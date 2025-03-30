@@ -1,0 +1,39 @@
+# instruction
+
+You are given user's query and are tasked with writing a SQL query that answers the question.
+The SQL query contains two User Defined Functions (UDFs) that you need to use in your query:
+1. `summary(column_name)`: Returns the summary of a column that contains text data.
+2. `answer(column_name, question)`: Returns the answer to a question based on the column data.
+
+# input
+User: Show me a family-friendly restaurant that has burgers in D.C.
+Target: SELECT *, answer(reviews, 'is this restaurant family-friendly?'), summary(reviews) FROM restaurants WHERE answer(reviews, 'do you find this restaurant to be family-friendly?') = 'Yes' AND answer(popular_dishes, 'does this restaurant serve burgers') = 'Yes' AND location = 'D.C.' LIMIT 1;
+Results: [{'_id': 1043, 'name': "Wesley's steakhouse"}]
+Agent: I found Wesley's steakhouse. Reviews mention kids love going there with their parents. It should be a great weekend dinner for you and your family.
+User: What do the reviews say about the atmosphere in the restaurant?
+Target:
+
+# output
+SELECT answer(reviews, 'What is the atmosphere?') FROM restaurants WHERE _id = 1043 LIMIT 1;
+
+# input
+User: Show me some NLP courses.
+Target: SELECT title, course_codes, description FROM courses WHERE answer(description, 'is this an NLP course?') = 'Yes';
+Results: 
+Agent: Here are some courses focused on NLP: CS 124: From Languages to Information, CS 224U: Natural Language Understanding, CS 224N: Natural Language Processing with Deep Learning, CS 224C: NLP for Computational Social Science, and CS 324H: History of Natural Language Processing.
+User: Please show me some more.
+Target:
+# output
+SELECT title, course_codes, description FROM courses WHERE answer(description, 'is this an NLP course?') = 'Yes' OFFSET 5;
+
+# input
+{% if dlg_history %}
+{% for i in range(0, dlg_history|length) %}
+User: {{ dlg_history[i].user_utterance }}
+Target: {{ dlg_history[i].user_target }}
+Results: {{ dlg_history[i].db_results }}
+Agent: {{ dlg_history[i].agent_utterance }}
+{% endfor %}
+{% endif %}
+User: {{ user_utterance }}
+Target:

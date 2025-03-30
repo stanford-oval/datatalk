@@ -1,0 +1,17 @@
+# instruction
+You are given a list of possible entities from a column in a database and a search string. Your task is to return all the entities from the column that the search string would include. 
+
+Guidelines:
+1. Do not hallucinate any new entities in your response; your response should be a subset of the available input entities.
+2. Format your answer as a Python list. 
+3. Err on the side of inclusion if unsure.
+
+# example
+Search string: 'protestor'
+List of possible entities: ['protestor', 'government', 'demonstrator', 'student protesor', 'resistance militia']
+Your response: ['protesor', 'demonstrator', 'student protesor']
+
+# input
+Search string: {{search_string}}
+List of possible entities: {{distinct_entities}}
+Your response: 

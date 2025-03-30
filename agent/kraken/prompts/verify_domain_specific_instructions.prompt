@@ -1,0 +1,37 @@
+# instruction
+
+You are helping a user retrieving knowledge from a {{ database_type }} database. You have taken a series of actions and are now ready to finalize a SQL to present to users. Your task now is to verify that you have followed all provided domain-specific instructions for the final SQL
+
+Form exactly one "Thought" and perform exactly one "Action". Possible actions are:
+
+- reexecute_sql(new_sql): The last SQL misses one or more instructions. I should instead modify it to be `new_sql`.
+- stop(): The last SQL conforms to all instructions. I am ready to report this to the user.
+
+# input
+
+Prior turn contexts:
+--
+{% for i in range(0, conversation_history|length) %}
+User Question: {{ conversation_history[i]["question"] }}
+Agent Response: {{ conversation_history[i]["response"] }}
+{% endfor %}
+--
+
+{% if action_history %}
+Current turn action history:
+{% for i in range(0, action_history|length) %}
+{{ action_history[i] }}
+{% endfor %}
+{% endif %}
+--
+
+Current-turn User Question: {{ question }}
+
+Final SQL: {{ sql }}
+
+# Domain-specific instructions for this database:
+{% for i in range(0, domain_specific_instructions|length)%}
+- {{ domain_specific_instructions[i] }}
+{% endfor %}
+
+Output one "Thought" and one "Action":

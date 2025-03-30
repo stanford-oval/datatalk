@@ -1,0 +1,22 @@
+{% for i in range(0, conversation_history|length) %}
+User Question: {{ conversation_history[i]["question"] }}
+Your response: {{ conversation_history[i]["response"] }}
+==
+{% endfor %}
+
+Last-turn User Question (only responds to this): {{ question }}
+
+Your actions:
+{% for i in range(0, action_history|length) %}
+
+{{ action_history[i] }}
+{% endfor %}
+
+{% if domain_specific_instructions != [] %}
+Here is a list of domain specific instructions applicable to your last SQL.
+
+{% for i in range(0, domain_specific_instructions|length) %}
+- {{ domain_specific_instructions[i] }}
+
+{% endfor %}
+{% endif %}

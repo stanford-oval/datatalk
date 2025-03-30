@@ -1,0 +1,62 @@
+# instruction
+You are given a {{ database_type }} query that involves the '_location' column, and a dictionary containing other similar usable columns and their existing values. However, we don't want to use the '_location' column, so your job is to convert the initial query into one that filters on the existing values from the other similar usable columns instead of '_location'. 
+
+Follow a step-by-step process:
+1. Identify the search string in the input query that is being used to filter '_location'.
+2. Check if the search string is already accurately represented by any of the existing values in any of the usable columns.
+3. If not, determine whether the search string can be accurately represented using a combination of values from the usable columns.
+4. If not, only then must we represent the location by longitude/latitude, which can represent any location.
+
+Provide your output in a JSON format with two fields: 
+- 'column_to_use', which must either be one of the usable columns, OR 'lat/long' if the location cannot be represented using the provided usable columns.
+- 'modified_query', which is the full revised query using the correct column in place of 'location'. If you decided to use long/lat, this field should be 'N/A'.
+
+DO NOT return a modified query that filters on values that don't exist in the dictionary. You can only use columns and values in the dictionary, or lat/long.
+
+# input
+Usable columns and options: 
+{
+    "region": ["Western Africa", "Middle East", "Central America", "Southeast Asia"]
+    "country" ["Somalia", "Djibouti", "Ethiopia", "Eritrea"]
+}
+Draft query: "SELECT * FROM stanford_api_data WHERE location='The Middle-East';"
+# output
+{
+    'column_to_use': "region",
+    'modified_query': "SELECT * FROM stanford_api_data WHERE location='Middle East';"
+}
+
+# input
+Usable columns and options: 
+{
+    "region": ["Western Africa", "Middle East", "Central America", "Southeast Asia"]
+    "country" ["Somalia", "Djibouti", "Ethiopia", "Eritrea"]
+}
+Draft query: "SELECT notes FROM stanford_api_data WHERE location='horn of Africa';"
+# output
+{
+    'column_to_use': "country",
+    'modified_query': "SELECT notes FROM stanford_api_data WHERE country in ('Somalia', 'Djibouti', 'Ethiopia', 'Eritrea');"
+}
+
+
+# input
+Usable columns and options: 
+{
+    "region": ["Northern Africa", "Middle East", "Central America", "Southeast Asia"]
+    "country" ["Somalia", "Djibouti", "Ethiopia", "Eritrea"]
+}
+Draft query: 'SELECT * FROM stanford_api_data WHERE location='Nairobi' LIMIT 5;'
+# output
+{
+    'column_to_use': 'long/lat',
+    'modified_query': 'N/A'
+}
+
+
+# input
+Usable columns and options: 
+{{ location_options_dict }}
+Draft query: {{ sql_query_draft }}
+
+# output

@@ -1,0 +1,19 @@
+prompt_dirs: # relative to the location of this file
+  - "./kraken/prompts"
+
+litellm_set_verbose: false
+
+prompt_logging:
+  log_file: "./prompt_logs.jsonl"
+  prompts_to_skip:
+    - "if_remove_datapoint.prompt"
+    - "modify_datapoint.prompt"
+
+llm_endpoints:
+  - api_base: https://ovalopenairesource.openai.azure.com
+    api_version: "2024-08-01-preview"
+    api_key: "AZURE_API_KEY"
+    engine_map:
+      gpt-35-turbo-instruct: azure_text/gpt-35-turbo-instruct
+      gpt-4o: azure/gpt-4o-global
+      gpt-4o-mini: azure/gpt-4o-mini
