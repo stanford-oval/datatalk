@@ -60,7 +60,8 @@ litellm.success_callback = [track_cost_callback]
 async def on_chat_start(
     look_up_table_path,
     domain_specific_instructions,
-    database
+    database,
+    engine="gpt-4o"
 ):  
     table_w_ids, table_schema_lst = prepare_initialize(look_up_table_path)
 
@@ -78,10 +79,10 @@ async def on_chat_start(
     ]
 
     DatatalkParser.initialize(
-        engine="gpt-4o",
+        engine=engine,
     )
     semantic_parser_class = DatatalkParser(
-        engine="gpt-4o",
+        engine=engine,
         table_w_ids=table_w_ids,
         database_name=database_name,
         suql_model_name=suql_model_name,
@@ -460,3 +461,19 @@ async def run_single_message(
     
     print(f"total cost so far: {global_cost_counter.value}")
     return res
+
+if __name__ == "__main__":
+    import asyncio
+    async def main():
+        semantic_parser_class = await on_chat_start(
+            look_up_table_path="/data1/knowledge_agents/datasets/fec/_lookup_table_6_small_files.csv",
+            domain_specific_instructions="/data1/knowledge_agents/datasets/fec/domain_specific_instructions.csv",
+            database="fec"
+        )
+
+        await run_single_message(
+            message="How many candidates are there?",
+            semantic_parser_class=semantic_parser_class
+        )
+
+    asyncio.run(main())
