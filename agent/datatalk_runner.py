@@ -71,7 +71,7 @@ async def on_chat_start(
     db_secrets_file = None
     suql_enabled = False
     database_name = database
-    if os.path.exists(db_details_path):
+    if db_details_path and os.path.exists(db_details_path):
         with open(db_details_path, "r") as fd:
             db_details = json.load(fd)
         if "db_type" in db_details:
