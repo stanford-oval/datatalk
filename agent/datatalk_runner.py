@@ -67,21 +67,9 @@ async def on_chat_start(
     suql_model_name = "azure/gpt-4o"
     embedding_server_address = "http://127.0.0.1:57378"
     db_type = "postgres"
-    db_details_path = None
     db_secrets_file = None
     suql_enabled = False
     database_name = database
-    if db_details_path and os.path.exists(db_details_path):
-        with open(db_details_path, "r") as fd:
-            db_details = json.load(fd)
-        if "db_type" in db_details:
-            db_type = db_details["db_type"]
-        if "db_secrets_file" in db_details:
-            db_secrets_file = db_details["db_secrets_file"]
-        if "suql_enabled" in db_details:
-            suql_enabled = db_details["suql_enabled"]
-        if "database_name" in db_details:
-            database_name = db_details["database_name"]
 
     available_actions = [
         'get_tables',
