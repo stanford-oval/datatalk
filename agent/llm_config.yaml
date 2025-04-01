@@ -11,10 +11,8 @@ prompt_logging:
     - "modify_datapoint.prompt"
 
 llm_endpoints:
-  - api_base: https://ovalopenairesource.openai.azure.com
-    api_version: "2024-08-01-preview"
-    api_key: "AZURE_API_KEY"
+  - api_base: https://api.openai.com/v1
+    api_key: OPENAI_API_KEY
     engine_map:
-      gpt-35-turbo-instruct: azure_text/gpt-35-turbo-instruct
-      gpt-4o: azure/gpt-4o-global
-      gpt-4o-mini: azure/gpt-4o-mini
+      gpt-4o: gpt-4o-2024-11-20
+      gpt-4o-mini: gpt-4o-mini-2024-07-18
