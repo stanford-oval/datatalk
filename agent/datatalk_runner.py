@@ -219,6 +219,7 @@ async def run_single_message(
     conversation_history = [],
     semantic_parser_class = None,
     save_to_local = None,
+    reporter_engine = "gpt-4o"
 ):
     step_counter = 1
     
@@ -345,7 +346,7 @@ async def run_single_message(
     
 
     stream = client.chat.completions.create(
-        model="gpt-4o",
+        model=reporter_engine,
         max_tokens=4000,
         temperature=0.0,
         messages=reporter_msgs,
