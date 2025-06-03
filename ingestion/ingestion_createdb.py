@@ -34,19 +34,21 @@ def create_newdb_under_psql(database):
     # Log in as the postgres user and create the database
     subprocess.run(['sudo', 'su', '-', 'postgres', '-c', f'createdb {database}'])
 
-    # Execute SQL commands in the newly created database
-    sql_commands = f"""
-    CREATE ROLE select_user WITH PASSWORD 'select_user';
-    GRANT SELECT ON ALL TABLES IN SCHEMA public TO select_user;
-    ALTER ROLE select_user LOGIN;
+    # List of SQL commands to execute one by one
+    sql_commands = [
+        "CREATE ROLE select_user WITH PASSWORD 'select_user';",
+        "GRANT SELECT ON ALL TABLES IN SCHEMA public TO select_user;",
+        "ALTER ROLE select_user LOGIN;",
+        f"CREATE ROLE creator_role WITH PASSWORD 'creator_role';",
+        f'GRANT CREATE ON DATABASE "{database}" TO creator_role;',
+        'GRANT CREATE ON SCHEMA public TO creator_role;',
+        'ALTER ROLE creator_role LOGIN;'
+    ]
 
-    CREATE ROLE creator_role WITH PASSWORD 'creator_role';
-    GRANT CREATE ON DATABASE {database} TO creator_role;
-    GRANT CREATE ON SCHEMA public TO creator_role;
-    ALTER ROLE creator_role LOGIN;
-    """
-
-    subprocess.run(['sudo', 'su', '-', 'postgres', '-c', f'psql {database} -c "{sql_commands}"'])
+    for cmd in sql_commands:
+        subprocess.run([
+            'sudo', 'su', '-', 'postgres', '-c', f'psql {database} -c "{cmd}"'
+        ])
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Create a new PostgreSQL database.')

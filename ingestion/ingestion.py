@@ -12,6 +12,8 @@ from suql.postgresql_connection import execute_sql as execute_sql_direct
 from ingestion_tools import oracle_to_postgres_type
 from io import StringIO
 import stat
+from concurrent.futures import ProcessPoolExecutor, as_completed
+
 
 
 FORMATS = ['percentage', 'float', 'int', 'date', 'time', 'timestamp', 'interval', 'units']
@@ -353,11 +355,46 @@ def get_unique_values_pd_df(column):
         unique_values = set(column.unique())
     return unique_values
 
+def check_no_column_types(
+    csv_filepath_or_dict
+):
+    if "csv_filepath_header" not in csv_filepath_or_dict or not csv_filepath_or_dict["csv_filepath_header"]:
+        return True
+    elif "csv_filepath_header" in csv_filepath_or_dict:
+        df = pd.read_csv(csv_filepath_or_dict["csv_filepath_header"])
+        df.columns = [normalize_colname(c) for c in df.columns]
+        if "data_type" not in df:
+            print("csv_filepath_header found, but no data type info. Dynamically geneerating column type info...")
+            return True
+    return False
+
+# Utility function to normalize column names
+def normalize_colname(col):
+    return col.strip().replace(' ', '_').lower()
+
+def get_column_description_mapping(
+    csv_filepath_or_dict
+):
+    if "csv_filepath_header" not in csv_filepath_or_dict or not csv_filepath_or_dict["csv_filepath_header"]:
+        return {}
+    elif "csv_filepath_header" in csv_filepath_or_dict:
+        df = pd.read_csv(csv_filepath_or_dict["csv_filepath_header"])
+        df.columns = [normalize_colname(c) for c in df.columns]
+        if "description" not in df:
+            return {}
+        else:
+            description_mapping = df.set_index('column_name')['description'].to_dict()
+            description_mapping['_id'] = 'unique row ID'
+            return description_mapping
+    
+    return {}
+
 def process_csv(
     csv_filepath_or_dict,
     database,
     delimiter=',',
     quotechar='"',
+    has_header=False,
 ):
     """
     The header file should be a CSV file that contains the following (useful) fields:
@@ -366,6 +403,7 @@ def process_csv(
     - Data type
     
     `delimiter`, `quotechar` refer to the CSV structure, they are passed to the pandas `read_csv` function.
+    `has_header` indicates whether the CSV file's first line contains column headers that should be skipped.
     """
     new_entries = [] # for recording into the `_lookup_table.csv`
     
@@ -376,11 +414,22 @@ def process_csv(
     pre_declared_enums = {}
     free_text_fields = ""
        
-    if "csv_filepath_header" not in csv_filepath_or_dict or not csv_filepath_or_dict["csv_filepath_header"]:
+    if check_no_column_types(csv_filepath_or_dict):
         df = pd.read_csv(csv_filepath, quotechar=quotechar, delimiter=delimiter, keep_default_na=False)
         id_field_name = csv_filepath_or_dict["id_field_name"] if "id_field_name" in csv_filepath_or_dict else None
         df, ordered_headers, _ = create_df_from_csv(df, id_field_name=id_field_name)
-        create_table_param = ', '.join([f'"{header_name}" {header_type}' for header_name, header_type in ordered_headers])
+        
+        column_description_mapping = get_column_description_mapping(csv_filepath_or_dict)
+        if column_description_mapping:
+            for header_name, _ in ordered_headers:
+                assert header_name in column_description_mapping, f"Header name '{header_name}' not found in column_description_mapping"
+                create_table_param = ''.join(
+                    f'"{header_name}" {header_type}{"," if idx < len(ordered_headers) - 1 else ""} --{column_description}\n'
+                    for idx, (header_name, header_type) in enumerate(ordered_headers)
+                    if (column_description := column_description_mapping[header_name].replace("\n", ", ").replace("\r", ""))
+                )
+        else:
+            create_table_param = ', '.join([f'"{header_name}" {header_type}' for header_name, header_type in ordered_headers])
         create_table_cmd = f"CREATE TABLE \"{table_name}\" ({create_table_param})"
         create_table_command = create_table_for_df(
             df,
@@ -415,12 +464,13 @@ def process_csv(
                 subprocess.run(csv_filepath_or_dict["command_to_execute"], shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             except subprocess.CalledProcessError as e:
                 print(f"Command execution failed with error:")
-                raise e
+                raise
         
         # create a CREATE command based on what is inside the header field
         df = pd.read_csv(csv_filepath_or_dict["csv_filepath_header"])
-        if "Description" in df:
-            df["Description"] = df["Description"].fillna('')
+        df.columns = [normalize_colname(c) for c in df.columns]
+        if "description" in df:
+            df["description"] = df["description"].fillna('')
         create_table_command = f'CREATE TABLE "{table_name}" (\n'
         
         # if a description exists in this dict, include it in the create table commmand
@@ -433,23 +483,23 @@ def process_csv(
         # determine if the CSV has a primary key
         no_primary_key = True
         for _, row in df.iterrows():
-            if "PRIMARY KEY" in row["Data type"]:
+            if "PRIMARY KEY" in str(row["data_type"]):
                 no_primary_key = False
         
         for index, row in df.iterrows():
-            column_name = row["Column name"]
-            column_datatype = oracle_to_postgres_type(row["Data type"])
+            column_name = row["column_name"]
+            column_datatype = oracle_to_postgres_type(row["data_type"])
             ordered_headers.append((column_name, column_datatype))
             if no_primary_key and index == 0:
                 column_datatype += " PRIMARY KEY"
             
             column_description = ""
-            if "Field name" in row and "Description" in row and row["Field name"] and row["Description"]:
-                column_description += row["Field name"] + ". " + row["Description"]
-            elif "Description" in row:
-                column_description += row["Description"]
-            elif "Field name" in row:
-                column_description += row["Field name"]
+            if "field_name" in row and "description" in row and row["field_name"] and row["description"]:
+                column_description += row["field_name"] + ". " + row["description"]
+            elif "description" in row:
+                column_description += row["description"]
+            elif "field_name" in row:
+                column_description += row["field_name"]
                 
             column_description = column_description.replace("\n", ", ").replace("\r", "") # replace "\n" in comments since it will cause problems
             
@@ -468,16 +518,16 @@ def process_csv(
                 column_datatype = f"{table_name}_{column_name}_enum" + "[]"
                 
             if index == df.index[-1]:
-                create_table_command += f""""{column_name}" {column_datatype}"""
+                create_table_command += f'"{column_name}" {column_datatype}'
             else:
-                create_table_command += f""""{column_name}" {column_datatype},"""
+                create_table_command += f'"{column_name}" {column_datatype},'
             if column_description:
                 create_table_command += f" -- {column_description}"
             create_table_command += "\n"
             
         
         create_table_command += ");"
-        id_field_name = df.iloc[0]["Column name"]
+        id_field_name = df.iloc[0]["column_name"]
 
     # prepare converters to convert columns of certain types to their canonical representation
     converters = {}
@@ -558,17 +608,10 @@ def process_csv(
             create_table_cmd=create_table_command_sql # use the command with type declaration
         )
     else:
-        # for col_name, col_type in ordered_headers:
-        #     # "DATE(MM/DD/YYYY)" is automatically handled by datetime
-        #     if re.sub(r'\s+', '', col_type) == "DATE(MMDDYYYY)":
-        #         converters[col_name] = lambda x: datetime.strptime(x, '%m%d%Y').date() if x else None
         chunk_size = 10000
         execute_sql_direct(f'DROP TABLE IF EXISTS "{table_name}"', database, user="creator_role", password="creator_role", commit_in_lieu_fetch=True)
         execute_sql_direct(create_table_command_sql, database, user="creator_role", password="creator_role", commit_in_lieu_fetch=True)
         
-        # with open(csv_filepath, 'r') as file:
-        #     data = special_processing_fcn(file.read())
-        #     data_path = StringIO(data)
         conn = psycopg2.connect(
             database=database,
             user="creator_role",
@@ -582,12 +625,17 @@ def process_csv(
         def count_lines_with_wc(file_path):
             result = subprocess.run(['wc', '-l', file_path], stdout=subprocess.PIPE, text=True)
             return int(result.stdout.split()[0])
-        # def bad_line_handler(bad_line):
-        #     print(f"Bad line encountered: {bad_line}")
-        #     raise ValueError
-        
+
         with tqdm(total=count_lines_with_wc(data_path)) as pbar:
-            with open(data_path, 'r') as file:  
+            with open(data_path, 'r') as file:
+                # Skip header row if has_header is True
+                first_chunk = True
+                cumulative_line_count = 0
+                if has_header:
+                    next(file)  # Skip the header line
+                    pbar.update(1)  # Update progress bar for the skipped line
+                    cumulative_line_count = 1  # Start counting after header
+                
                 while True:
                     lines = []
                     try:
@@ -599,6 +647,9 @@ def process_csv(
                     
                     if not lines:
                         break  # Exit the loop if there are no more lines to process
+                    
+                    # Capture the starting line number for this chunk in the original CSV
+                    chunk_start_line = cumulative_line_count + 1
                     
                     # Apply special processing function to the chunk
                     processed_data = special_processing_fcn("".join(lines))
@@ -638,25 +689,62 @@ def process_csv(
                             # the only thing that needs to be escaped are the commas, which are escaped with "\\\\"
                             df[col_name] = df[col_name].apply(lambda x: '{' + ','.join(item.replace(",", "\\\\,") for item in (x)) + '}')
                     
-                    # chunk['TRANSACTION_DT'] = pd.to_datetime(chunk['TRANSACTION_DT'])
-                    # print(chunk['TRANSACTION_DT'].dtype)
-                    # pd.set_option('display.max_columns', None)
-                    # print(chunk)
-                    # print(set(chunk['TRANSACTION_DT'].apply(type)))
-
-
-                    # Copy the processed chunk into PostgreSQL using pgcopy
-                    # with conn.cursor() as cursor:
-                        # mgr = CopyManager(conn, table_name, columns)
-                        # mgr.copy(chunk)
                     output = StringIO()
+                    sep = '\x1F'  # Unit Separator
                     if quotechar:
-                        chunk.to_csv(output, sep='|', quoting=csv.QUOTE_MINIMAL, header=False, index=False, escapechar='\\')
+                        chunk.to_csv(output, sep=sep, quoting=csv.QUOTE_MINIMAL, header=False, index=False, escapechar='\\')
                     else:
-                        chunk.to_csv(output, sep='|', quoting=csv.QUOTE_NONE, header=False, index=False, escapechar='\\')
+                        chunk.to_csv(output, sep=sep, quoting=csv.QUOTE_NONE, header=False, index=False, escapechar='\\')
                     output.seek(0)
-                    cur.copy_from(output, table_name, sep='|', null='')
+                    try:
+                        cur.copy_from(output, table_name, sep=sep, null='')
+                    except Exception as e:
+                        print(f"Error during copy operation: {str(e)}")
+                        
+                        # Extract line number from the error message if available
+                        error_str = str(e)
+                        line_match = re.search(r'line (\d+)', error_str)
+                        column_match = re.search(r'column (\w+)', error_str)
+                        
+                        # Get original data for debugging
+                        output.seek(0)
+                        problem_data = output.getvalue().splitlines()
+                        
+                        if line_match:
+                            # Get the specific line number from the COPY operation error
+                            error_line_num = int(line_match.group(1))
+                            
+                            # Calculate the original CSV line number
+                            original_csv_line = chunk_start_line + error_line_num - 1
+                            print(f"Error at line {original_csv_line} in the original CSV file")
+                            
+                            # Show the actual data line that caused the error
+                            if error_line_num <= len(problem_data):
+                                chunk_line_num = error_line_num - 1  # Adjust for 0-based indexing
+                                print(f"Problematic line {error_line_num} in current chunk:")
+                                print(problem_data[chunk_line_num])
+                                
+                                # Also display the row as structured data
+                                if column_match:
+                                    column_name = column_match.group(1)
+                                    print(f"Problem column: {column_name}")
+                                    row_values = problem_data[chunk_line_num].split(sep)
+                                    if len(row_values) == len(columns):
+                                        print("Row data by column:")
+                                        for i, (col, val) in enumerate(zip(columns, row_values)):
+                                            print(f"  {col}: '{val}'")
+                            else:
+                                print(f"Error line {error_line_num} is beyond the current chunk size.")
+                        else:
+                            # If we can't extract the specific line, show the first few lines
+                            print(f"First few lines of the problematic chunk:")
+                            for i, line in enumerate(problem_data[:5]):
+                                print(f"Line {i+1}: {line}")
+                        
+                        raise
                     
+                    # Update the cumulative line count for the next chunk
+                    cumulative_line_count += len(lines)
                     pbar.update(len(lines))
         
         cur.execute("GRANT SELECT ON ALL TABLES IN SCHEMA public TO select_user;")
@@ -693,6 +781,11 @@ def ensure_unique_id(
     
     return df, ordered_headers
 
+# Define process_column at the top level of the module
+def process_column(header, column):
+    type_name, current_column_mapping, converted_column = detect_convert_column(column)
+    return header, type_name, current_column_mapping, converted_column
+
 def create_df_from_csv(
     df,
     id_field_name=None
@@ -706,13 +799,19 @@ def create_df_from_csv(
     ordered_headers = []
     column_mapping = {}
     clean_cells = {}
-    
-    for header, column in cells.items():
-        type_name, current_column_mapping, converted_column = detect_convert_column(column)
-        ordered_headers.append((header, type_name))
-        column_mapping.update({header: current_column_mapping})
-        clean_cells[header] = converted_column
-    
+
+    num_columns = len(cells)
+    max_workers = 10 if num_columns > 200 else 1
+
+    # Use ProcessPoolExecutor for parallel processing
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(process_column, header, column): header for header, column in cells.items()}
+        for future in tqdm(as_completed(futures), total=len(futures), desc="Processing column types"):
+            header, type_name, current_column_mapping, converted_column = future.result()
+            ordered_headers.append((header, type_name))
+            column_mapping.update({header: current_column_mapping})
+            clean_cells[header] = converted_column
+
     # construct the df
     df = pd.DataFrame(clean_cells)
     df, ordered_headers = ensure_unique_id(
@@ -783,21 +882,57 @@ def create_table_for_df(
     return create_table_cmd
 
 
+def load_declaration_file(
+    csvfile_path
+):
+    with open(csvfile_path, mode='r', newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        return [row for row in reader]
+
 def process_all_csvs(
     all_csv_file_paths,
     database,
     lookup_table_path = None,
-    create_db = False
+    create_db = False,
+    auto_create_db = False
 ):
     """
     Ingests all CSV files as specified in the list of `all_csv_file_paths`, specified either as a list or a local file path.
     
     Create a lookup CSV path at `lookup_table_path` if specified, or at the same directory as the first CSV file.
+    
+    CSV file paths can be specified as dictionaries with additional options:
+    - csv_filepath: path to the CSV file
+    - delimiter: CSV delimiter (default: ',')
+    - quotechar: CSV quote character (default: '"')
+    - has_header: whether the first line is a header to be skipped (default: False)
+    - auto_create_db: if True, automatically create the database if it does not exist
     """
+    if auto_create_db:
+        import psycopg2
+        from psycopg2 import OperationalError
+        try:
+            psycopg2.connect(
+                database=database,
+                user="creator_role",
+                password="creator_role",
+                host="127.0.0.1",
+                port="5432",
+            )
+        except OperationalError as e:
+            if 'does not exist' in str(e):
+                create_db = True
+            else:
+                raise
+
     if create_db:
         from ingestion_createdb import create_newdb
         create_newdb(database=database, use_psql_user=True)
         print(f"created postgres database name = {database}")
+    
+    # If all_csv_file_paths is not a list, assume it's a path to a declaration file
+    if not isinstance(all_csv_file_paths, list):
+        all_csv_file_paths = load_declaration_file(all_csv_file_paths)
     
     if not lookup_table_path:
         if type(all_csv_file_paths[0]) is str:
@@ -808,13 +943,14 @@ def process_all_csvs(
     res = []
     for i in all_csv_file_paths:
         i_res = process_csv(
-            i, 
+            i if isinstance(i, dict) else {"csv_filepath": i}, 
             database,
-            delimiter=i["delimiter"] if "delimiter" in i else ",",
-            quotechar=i["quotechar"] if "quotechar" in i else '"',
+            delimiter=i["delimiter"] if isinstance(i, dict) and "delimiter" in i else ",",
+            quotechar=i["quotechar"] if isinstance(i, dict) and "quotechar" in i else '"',
+            has_header=i["has_header"] if isinstance(i, dict) and "has_header" in i else False,
         )
         res.append(i_res)
-        filepath = i["csv_filepath"]
+        filepath = i["csv_filepath"] if isinstance(i, dict) else i
         print (f"Processed {filepath}: {str(i_res)}")
     
     result_df = pd.concat(res, ignore_index=True)
@@ -839,16 +975,23 @@ def process_all_csvs(
     os.chmod(lookup_table_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH)
     
 if __name__ == "__main__": 
-    declarations = []
-    declarations += [
-        {
-            "csv_filepath": f"/data1/insight-bench/data/notebooks/csvs/flag-{i}.csv",
-        }
-        for i in range(1, 11)
-    ]
+    for i in range(11, 30):
+        declarations = []
+        declarations += [
+            {
+                "csv_filepath": f"/data1/insight-bench/data/notebooks/csvs/flag-{i}.csv",
+            }
+
+        ]
+        process_all_csvs(
+            declarations,
+            "insight_bench",
+            lookup_table_path=f"/data1/datatalk_domains/insight_bench/insight_bench_{i}/_lookup_table.csv"
+        )
+            
+        
     
-    process_all_csvs(
-        declarations,
-        "insight_bench",
-        lookup_table_path="/data1/datatalk_domains/insight_bench/_lookup_table.csv"
-    )
+    # process_all_csvs(
+    #     "/data1/datatalk_domains/uploads/311/modified_datatalk_declaration.csv",
+    #     "311",
+    # )
