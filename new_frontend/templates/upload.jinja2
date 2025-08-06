@@ -1,0 +1,730 @@
+{% extends "templates/base.jinja2" %}
+{% block content %}
+    <div class="container mx-auto py-10">
+        <div class="mb-8 max-w-xl mx-auto">
+            <h1 class="text-3xl font-bold mb-4 text-gray-900">Upload Your CSVs for Datatalk</h1>
+            <p class="text-gray-700 mb-6">
+                Follow the steps below to prepare and upload your CSVs for Datatalk. This guide will help you prepare your CSVs,
+                include table and column descriptions, and write a declaration file for Datatalk to use.
+                This guide uses a subset of the 2023-2024 FEC data as an example, but you can use any CSVs you have.
+            </p>
+        </div>
+        <div class="card bg-base-100 shadow-xl p-8 max-w-2xl mx-auto rounded-lg">
+            {% if index_path %}
+                <div class="alert alert-success my-8 p-4 rounded-lg bg-success text-success-content">
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 mr-2 text-success-content"
+                             fill="none"
+                             stroke="currentColor"
+                             viewBox="0 0 24 24"
+                             xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span>File uploaded successfully!</span>
+                    </div>
+                </div>x`
+                <p class="mt-4 text-center text-gray-700">
+                    If indexed, you will receive an email with instructions on how to use the index.
+                </p>
+            {% elif error %}
+                <div class="alert alert-error my-8 p-4 rounded-lg bg-error text-error-content">
+                    <div class="flex flex-column items-center justify-between">
+                        <div class="m-2">
+                            <div class="text-lg">
+                                <button class="text-error-content hover:text-error-dark"
+                                        onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none';">
+                                    <svg class="w-6 h-6"
+                                         fill="none"
+                                         stroke="currentColor"
+                                         viewBox="0 0 26 26"
+                                         xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            <pre class="whitespace-pre-wrap">{{ error }}</pre>
+                            <p class="mt-6">
+                                <span class="font-semibold mt-4">Please correct this issue and try uploading again.</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            <div class="mb-8">
+                <div tabindex="0"
+                     class="collapse collapse-arrow border border-base-300 bg-base-100 rounded-box">
+                    <input type="checkbox" class="peer" />
+                    <!-- This input controls the collapse state -->
+                    <div class="collapse-title text-xl font-medium text-gray-800 peer-checked:text-primary">
+                        Step 1: Put all CSVs in a folder
+                    </div>
+                    <div class="collapse-content peer-checked:block">
+                        <p class="text-gray-600 mb-4">
+                            First, gather all the CSVs you'd want to expose to Datatalk in a folder. We will refer to this folder as <code class="bg-gray-600 text-white px-1 py-0 rounded">workdir</code>.
+                            The CSV file names would be used as the table names in Datatalk. We recommend giving them meaningful names (e.g. <code class="bg-gray-600 text-white px-1 py-0 rounded">pac_and_party_summary_2023_2024.csv</code> instead of <code class="bg-gray-600 text-white px-1 py-0 rounded">csv_1.csv</code>).
+
+                            Your <code class="bg-gray-600 text-white px-1 py-0 rounded">workdir</code> should have the following structure:
+                        <pre class="bg-gray-100 p-4 rounded-lg text-sm text-gray-800 whitespace-pre-wrap break-words max-w-full shadow-inner border border-gray-300">
+workdir/
+├── pac_and_party_summary_2023_2024.csv
+├── all_candidates_2023_2024.csv
+├── candidate_master_2023_2024.csv
+└── ...
+</pre>
+                        </br>
+
+                        Step 2 and 3 below are optional. Step 2 asks you to prepare a header file for each CSV describing the data types and descriptions of the columns,
+                        and Step 3 asks you to prepare a declaration file that describes the tables and where to find their associated header files.
+                        </br>
+
+                        You can choose to skip these steps and directly jump to Step 4 to upload these CSVs to Datatalk. However, providing these files will help the LLM
+                        understand the descriptions of the tables and their columns more accurately, especically with larger datasets where column names alone may not be enough to describe the data.
+                        </p>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="mb-8">
+            <div tabindex="0"
+                 class="collapse collapse-arrow border border-base-300 bg-base-100 rounded-box">
+                <input type="checkbox" class="peer" />
+                <!-- This input controls the collapse state -->
+                <div class="collapse-title text-xl font-medium text-gray-800 peer-checked:text-primary">
+                    Step 2: Prepare a header file for each CSV (Optional)
+                </div>
+                <div class="collapse-content peer-checked:block">
+                    <p class="text-gray-600 mb-4">
+                        It is optional to prepare a header file for each CSV. Each header file should be a CSV containing the following fields
+                        (Each field is optional. You can choose to include only the fields you need):
+
+                        <li>
+                            <strong>column_name</strong>, for example:
+                            <code class="bg-gray-600 text-white px-1 py-0 rounded">CMTE_ID</code>
+                        </li>
+                        <li>
+                            <strong>data_type</strong>, which can be either in ORACLE or POSTGRESQL format, for example:
+                            <code class="bg-gray-600 text-white px-1 py-0 rounded">VARCHAR(9)</code>
+                        </li>
+                        <li>
+                            <strong>description</strong>, for example:
+                            <div class="bg-gray-100 p-4 rounded-lg text-gray-700 italic my-4">A 9-character alpha-numeric code assigned to a committee by the Federal Election Commission. Committee IDs are unique and an ID for a specific committee always remains the same.</div>
+                        </li>
+                    </ul>
+                    </br>
+                    <p class="text-gray-600 mb-4">
+                        If <strong>data_type</strong> is not provided, Datatalk will infer it from the data itself. We recommend providing the <strong>data_type</strong> for large datasets
+                        where inferring the data type may take a while.
+
+                        <strong>description</strong> is used as context for the LLM to choose the correct column(s) to operate on.
+                    </p>
+
+                    For example, here is an example header file:
+<pre class="bg-gray-100 p-4 rounded-lg text-sm text-gray-800 whitespace-pre-wrap break-words max-w-full shadow-inner border border-gray-300">
+column_name,data_type,description
+CMTE_ID,VARCHAR(9),A 9-character alpha-numeric code assigned to a committee by the Federal Election Commission. Committee IDs are unique and an ID for a specific committee always remains the same.
+...
+</pre>
+
+                    </br>
+                    You also do not need to include a header file for each CSV. If you do not provide a header file, Datatalk will infer the data type from the data itself.
+                    After you have prepared your header files, put them in your <code class="bg-gray-600 text-white px-1 py-0 rounded">workdir</code> folder. For example:
+                        <pre class="bg-gray-100 p-4 rounded-lg text-sm text-gray-800 whitespace-pre-wrap break-words max-w-full shadow-inner border border-gray-300">
+workdir/
+├── pac_and_party_summary_2023_2024.csv
+├── pac_and_party_summary_2023_2024_header.csv
+├── all_candidates_2023_2024.csv
+├── candidate_master_2023_2024.csv
+└── candidate_master_2023_2024_header.csv
+└── ...
+</pre>
+</br>
+Here, <code class="bg-gray-600 text-white px-1 py-0 rounded">pac_and_party_summary_2023_2024_header.csv</code> and <code class="bg-gray-600 text-white px-1 py-0 rounded">candidate_master_2023_2024_header.csv</code> are provided, but <code class="bg-gray-600 text-white px-1 py-0 rounded">all_candidates_2023_2024.csv</code> is not.
+                </div>
+            </div>
+        </div>
+        <!-- Step 3 -->
+        <div class="mb-8">
+            <div tabindex="0"
+                 class="collapse collapse-arrow border border-base-300 bg-base-100 rounded-box">
+                <input type="checkbox" class="peer" />
+                <!-- This input controls the collapse state -->
+                <div class="collapse-title text-xl font-medium text-gray-800 peer-checked:text-primary">
+                    Step 3: Prepare a declaration file (Optional)
+                </div>
+                <div class="collapse-content peer-checked:block">
+                    <p class="text-gray-600 mb-4">
+                        You can prepare a declaration file that describes the CSVs and their associated header files in your <code class="bg-gray-600 text-white px-1 py-0 rounded">workdir</code>.
+                        This step is optional if you skiped Step 2, but necessary if you provided header files for your CSVs.
+
+                        The declaration file should be a CSV file that contains the following fields for each CSV:
+                        <li>
+                            <strong>csv_filepath</strong>, the name of the CSV file in your <code class="bg-gray-600 text-white px-1 py-0 rounded">workdir</code>. For example:
+                            <code class="bg-gray-600 text-white px-1 py-0 rounded">csv_1.csv</code>
+                        </li>
+                        <li>
+                            <strong>csv_filepath_header</strong>, the name of the header file for the CSV file in your <code class="bg-gray-600 text-white px-1 py-0 rounded">workdir</code>. For example:
+                            <code class="bg-gray-600 text-white px-1 py-0 rounded">csv_1_header.csv</code>
+                        </li>
+                        <li>
+                            (Optional) <strong>description</strong>, a description for the table represented by the CSV file. For example:
+                            <div class="bg-gray-100 p-4 rounded-lg text-gray-700 italic my-4">The PAC and party summary file contains summary financial information for each PAC and party committee. The file has one record per PAC and Party committee and shows information about the committee, total receipts and disbursements, receipts and disbursements broken down by type, contributions to other committees, independent expenditures made by the committee, and other financial summary information.</div>
+                        </li>
+                        <li>
+                            (Optional) <strong>delimiter</strong>, the delimiter for the CSV file. Defaults to <code class="bg-gray-600 text-white px-1 py-0 rounded">,</code> if not provided.
+                        </li>
+                        <li>
+                            (Optional) <strong>special_processing_fcn</strong>, A special processing function (in Python) to apply to the CSV file if your CSV contains special characters. Defaults to <code class="bg-gray-600 text-white px-1 py-0 rounded">None</code> if not provided. For example:
+                            <code class="bg-gray-600 text-white px-1 py-0 rounded">lambda x: x.replace(r'\|', '|')</code>
+                        </li>
+                        <li>
+                            (Optional) <strong>quotechar</strong>, the quote character for the CSV file. Defaults to <code class="bg-gray-600 text-white px-1 py-0 rounded">"</code> if not provided.
+                        </li>
+                    </p>
+                    </br>
+                    <p class="text-gray-600 mb-4">
+                        For example, here is an example declaration file:
+                        <pre class="bg-gray-100 p-4 rounded-lg text-sm text-gray-800 whitespace-pre-wrap break-words max-w-full shadow-inner border border-gray-300">
+csv_filepath,csv_filepath_header,description,delimiter,special_processing_fcn,quotechar
+pac_and_party_summary_2023_2024.csv,pac_and_party_summary_2023_2024_header.csv,The PAC and party summary file contains summary financial information for each PAC and party committee. The file has one record per PAC and Party committee and shows information about the committee, total receipts and disbursements, receipts and disbursements broken down by type, contributions to other committees, independent expenditures made by the committee, and other financial summary information.,|,lambda x: x.replace(r'\|', '|'),
+all_candidates_2023_2024.csv,,The all candidates file contains summary financial information for each candidate who raised or spent money during the period, regardless of when they are up for election....,|,lambda x: x.replace(r'\|', '|'),
+candidate_master_2023_2024.csv,candidate_master_2023_2024_header.csv,The candidate master file contains basic information for each candidate, including:...,|,lambda x: x.replace(r'\|', '|'),
+                        </pre>
+                    </p>
+                    </br>
+                    Here, for instance, we set the delimiter to <code class="bg-gray-600 text-white px-1 py-0 rounded">|</code> and the special processing function to <code class="bg-gray-600 text-white px-1 py-0 rounded">lambda x: x.replace(r'\|', '|')</code> due to the unique file format of the FEC data.
+
+                    <strong>Note:</strong> If you do include a declaration file, make sure to name it to <code class="bg-gray-600 text-white px-1 py-0 rounded">datatalk_declaration.csv</code>.
+                </div>
+            </div>
+        </div>
+        <!-- Step 4 -->
+        <div class="mb-8">
+            <div tabindex="0"
+                 class="collapse collapse-arrow border border-base-300 bg-base-100 rounded-box">
+                <input type="checkbox" class="peer" />
+                <!-- This input controls the collapse state -->
+                <div class="collapse-title text-xl font-medium text-gray-800 peer-checked:text-primary">
+                    Step 4: Upload Your CSVs Here
+                </div>
+                <div class="collapse-content peer-checked:block">
+                    <p class="text-gray-600 mb-4">
+                        If there are any errors, an error message will appear. Please correct the
+                        issues and try uploading again.
+                    </p>
+                    <div class="mb-6">
+                        <h3 class="font-bold text-lg mb-2">Selected Files:</h3>
+                        <ul id="selected-files-list" class="list-disc pl-6 mb-4">
+                            <!-- Selected files will be listed here -->
+                        </ul>
+                    </div>
+                    
+                    <div class="form-control mb-4">
+                        <!-- Database name input -->
+                        <label for="database-name" class="block text-lg font-medium text-gray-700 mb-2">
+                            Database Name (required)
+                        </label>
+                        <input type="text" 
+                               id="database-name"
+                               placeholder="Enter database name" 
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
+                               required>
+                        <p class="text-sm text-gray-500 mt-1">This name will be used to identify your database in Datatalk. We suggest giving it a specific and descriptive name.</p>
+                    </div>
+                    
+                    <div class="form-control mb-4">
+                        <!-- File selection button -->
+                        <label for="file-select" class="btn btn-outline py-3 text-xl font-semibold rounded-lg cursor-pointer mb-2">
+                            Select File
+                        </label>
+                        <input type="file" 
+                               id="file-select" 
+                               class="hidden" 
+                               multiple
+                               onchange="addFileToSelection()">
+                    </div>
+                    
+                    <form action="{{ url_for('upload') }}"
+                          method="post"
+                          enctype="multipart/form-data"
+                          class="space-y-6"
+                          id="upload-form">
+                        <!-- Hidden inputs will be added here -->
+                        <div id="hidden-files-container"></div>
+                        
+                        <div class="form-control">
+                            <button type="submit"
+                                    id="upload-button"
+                                    class="btn btn-primary w-full py-3 text-xl font-semibold rounded-lg hover:bg-primary-dark transition duration-300" 
+                                    disabled>
+                                Upload Files
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <script>
+                        // Array to track selected files
+                        const selectedFiles = [];
+                        
+                        // Function to add a file to the selection
+                        function addFileToSelection() {
+                            const fileInput = document.getElementById('file-select');
+                            if (fileInput.files.length > 0) {
+                                const filesList = document.getElementById('selected-files-list');
+                                let newFileAdded = false;
+                                for (let i = 0; i < fileInput.files.length; i++) {
+                                    const file = fileInput.files[i];
+                                    // Check if file is already selected
+                                    if (selectedFiles.some(f => f.name === file.name)) {
+                                        continue; // skip already selected files
+                                    }
+                                    // Add file to array
+                                    selectedFiles.push(file);
+                                    // Add to UI list
+                                    const listItem = document.createElement('li');
+                                    listItem.className = 'flex justify-between items-center mb-1';
+                                    const fileName = document.createElement('span');
+                                    fileName.textContent = file.name;
+                                    const removeButton = document.createElement('button');
+                                    removeButton.textContent = '×';
+                                    removeButton.className = 'text-red-500 font-bold text-xl hover:text-red-700';
+                                    removeButton.onclick = function() {
+                                        // Remove from array
+                                        const index = selectedFiles.findIndex(f => f.name === file.name);
+                                        if (index > -1) {
+                                            selectedFiles.splice(index, 1);
+                                        }
+                                        // Remove from UI
+                                        filesList.removeChild(listItem);
+                                        // Update button state
+                                        document.getElementById('upload-button').disabled = selectedFiles.length === 0;
+                                    };
+                                    listItem.appendChild(fileName);
+                                    listItem.appendChild(removeButton);
+                                    filesList.appendChild(listItem);
+                                    newFileAdded = true;
+                                }
+                                // Clear the file input for next selection
+                                fileInput.value = '';
+                                // Enable upload button if any new file was added
+                                if (newFileAdded) {
+                                    document.getElementById('upload-button').disabled = false;
+                                }
+                            }
+                        }
+                        
+                        // Handle form submission
+                        document.getElementById('upload-form').addEventListener('submit', function(e) {
+                            e.preventDefault();
+                            
+                            // Get database name
+                            const databaseName = document.getElementById('database-name').value.trim();
+                            if (!databaseName) {
+                                alert('Please enter a database name.');
+                                return;
+                            }
+                            
+                            if (selectedFiles.length === 0) {
+                                alert('Please select at least one file to upload.');
+                                return;
+                            }
+                            
+                            // Create FormData from selected files
+                            const formData = new FormData();
+                            formData.append('database', databaseName);
+                            selectedFiles.forEach(file => {
+                                formData.append('files', file);
+                            });
+                            
+                            // Show loading state
+                            const uploadButton = document.getElementById('upload-button');
+                            uploadButton.textContent = 'Uploading...';
+                            uploadButton.disabled = true;
+                            
+                            // Add progress UI elements
+                            const progressContainer = document.createElement('div');
+                            progressContainer.className = 'progress-container';
+                            progressContainer.style.marginTop = '20px';
+                            
+                            const progressBar = document.createElement('div');
+                            progressBar.className = 'progress';
+                            progressBar.style.height = '20px';
+                            progressBar.style.backgroundColor = '#f0f0f0';
+                            progressBar.style.borderRadius = '4px';
+                            progressBar.style.overflow = 'hidden';
+                            progressBar.style.marginBottom = '10px';
+                            
+                            const progressFill = document.createElement('div');
+                            progressFill.className = 'progress-bar';
+                            progressFill.style.height = '100%';
+                            progressFill.style.backgroundColor = '#4caf50';
+                            progressFill.style.width = '0%';
+                            progressFill.style.transition = 'width 0.3s';
+                            progressBar.appendChild(progressFill);
+                            
+                            const progressInfo = document.createElement('div');
+                            progressInfo.className = 'progress-info';
+                            progressInfo.style.display = 'flex';
+                            progressInfo.style.justifyContent = 'space-between';
+                            
+                            progressContainer.appendChild(progressBar);
+                            progressContainer.appendChild(progressInfo);
+                            
+                            document.getElementById('upload-form').appendChild(progressContainer);
+                            
+                            // Use XMLHttpRequest for progress tracking
+                            const xhr = new XMLHttpRequest();
+                            let startTime;
+                            let lastLoaded = 0;
+                            let lastTime = 0;
+                            
+                            xhr.open('POST', '{{ url_for("upload") }}');
+                            
+                            xhr.upload.onprogress = function(e) {
+                                if (!e.lengthComputable) {
+                                    progressInfo.textContent = "Upload in progress... (size unknown)";
+                                    return;
+                                }
+                                
+                                const now = Date.now();
+                                const percentComplete = Math.round((e.loaded / e.total) * 100);
+                                progressFill.style.width = percentComplete + '%';
+                                
+                                // Initialize on first progress event
+                                if (!startTime) {
+                                    startTime = now;
+                                    lastTime = now;
+                                    lastLoaded = 0;
+                                }
+                                
+                                // Calculate speed based on data since last update
+                                const timeDiff = (now - lastTime) / 1000; // seconds
+                                const bytesLoaded = e.loaded - lastLoaded;
+                                
+                                // Only calculate speed if enough time has passed
+                                if (timeDiff > 0.1) {
+                                    const speed = bytesLoaded / timeDiff; // bytes per second
+                                    
+                                    let speedText;
+                                    if (speed > 1024 * 1024) {
+                                        speedText = (speed / (1024 * 1024)).toFixed(2) + ' MB/s';
+                                    } else if (speed > 1024) {
+                                        speedText = (speed / 1024).toFixed(2) + ' KB/s';
+                                    } else {
+                                        speedText = Math.round(speed) + ' B/s';
+                                    }
+                                    
+                                    // Calculate estimated time left
+                                    const bytesLeft = e.total - e.loaded;
+                                    let timeLeft = speed > 0 ? bytesLeft / speed : 0;
+                                    let timeLeftText;
+                                    if (timeLeft > 60) {
+                                        const minutes = Math.floor(timeLeft / 60);
+                                        const seconds = Math.round(timeLeft % 60);
+                                        timeLeftText = `${minutes}m ${seconds}s left`;
+                                    } else {
+                                        timeLeftText = `${Math.round(timeLeft)}s left`;
+                                    }
+                                    
+                                    progressInfo.textContent = `${percentComplete}% (${speedText}, ${timeLeftText})`;
+                                    
+                                    // Update last values for next calculation
+                                    lastLoaded = e.loaded;
+                                    lastTime = now;
+                                }
+                            };
+                            
+                            // Add load start event handler
+                            xhr.upload.onloadstart = function() {
+                                startTime = Date.now();
+                                lastTime = startTime;
+                                progressInfo.textContent = "Upload starting...";
+                            };
+                            
+                            xhr.onload = function() {
+                                let uploadResponse;
+                                try {
+                                    uploadResponse = JSON.parse(xhr.responseText);
+                                } catch (e) {
+                                    console.error('Error parsing response', e);
+                                    alert('An error occurred while processing the server response.');
+                                    uploadButton.textContent = 'Upload Files';
+                                    uploadButton.disabled = false;
+                                    progressContainer.remove();
+                                    return;
+                                }
+                                
+                                if (uploadResponse.success) {
+                                    // Clear selected files
+                                    selectedFiles.length = 0;
+                                    document.getElementById('selected-files-list').innerHTML = '';
+                                    
+                                    // Reset button
+                                    uploadButton.textContent = 'Upload Files';
+                                    uploadButton.disabled = true;
+                                    
+                                    // Hide progress container
+                                    progressContainer.remove();
+                                    
+                                    // Create ingestion container
+                                    const ingestionContainer = document.createElement('div');
+                                    ingestionContainer.className = 'ingestion-container mt-4 p-4 border rounded-lg bg-gray-50';
+                                    document.getElementById('upload-form').appendChild(ingestionContainer);
+                                    
+                                    // Create output display area
+                                    const header = document.createElement('h3');
+                                    header.className = 'text-lg font-semibold mb-2';
+                                    header.textContent = 'Ingestion Results';
+                                    
+                                    const outputDisplay = document.createElement('div');
+                                    outputDisplay.className = 'ingestion-output font-mono text-sm whitespace-pre-wrap bg-gray-100 p-4 rounded-lg overflow-auto max-h-96';
+                                    outputDisplay.textContent = 'Connecting to ingestion service...\n';
+                                    // Make the container resizable
+                                    outputDisplay.style.resize = 'vertical';
+                                    outputDisplay.style.minHeight = '200px';
+                                    
+                                    ingestionContainer.appendChild(header);
+                                    ingestionContainer.appendChild(outputDisplay);
+                                    
+                                    // Start the ingestion process
+                                    startIngestionProcess(databaseName, uploadResponse.files, outputDisplay);
+                                } else {
+                                    // Show error
+                                    alert('Error uploading files: ' + uploadResponse.error);
+                                    
+                                    // Reset button
+                                    uploadButton.textContent = 'Upload Files';
+                                    uploadButton.disabled = false;
+                                    
+                                    // Remove progress container
+                                    progressContainer.remove();
+                                }
+                            };
+                            
+                            xhr.onerror = function() {
+                                console.error('Error:', xhr.statusText);
+                                alert('An error occurred while uploading the files.');
+                                
+                                // Reset button
+                                uploadButton.textContent = 'Upload Files';
+                                uploadButton.disabled = false;
+                                
+                                // Remove progress container
+                                progressContainer.remove();
+                            };
+                            
+                            xhr.send(formData);
+                        });
+                        
+                        // Function to start the ingestion process
+                        function startIngestionProcess(databaseName, filesPaths, outputDisplay) {
+                            // Create an AbortController to be able to cancel the fetch if needed
+                            const controller = new AbortController();
+                            const signal = controller.signal;
+                            
+                            // Set a timeout in case the request takes too long to start
+                            const timeoutId = setTimeout(() => {
+                                controller.abort();
+                                outputDisplay.textContent += '\nRequest timed out. Please try again.';
+                            }, 30000); // 30 second timeout
+                            
+                            // Call ingestion endpoint with streaming response handling
+                            fetch('/ingestion', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Cache-Control': 'no-cache',
+                                    'Pragma': 'no-cache'
+                                },
+                                body: JSON.stringify({
+                                    database: databaseName,
+                                    files: filesPaths
+                                }),
+                                signal: signal
+                            })
+                            .then(response => {
+                                // Clear the timeout since we got a response
+                                clearTimeout(timeoutId);
+                                
+                                if (!response.ok) {
+                                    throw new Error(`Server responded with status: ${response.status}`);
+                                }
+                                
+                                if (!response.body) {
+                                    throw new Error('ReadableStream not supported in this browser');
+                                }
+                                
+                                // Set up a reader for the stream
+                                const reader = response.body.getReader();
+                                const decoder = new TextDecoder('utf-8');
+                                let buffer = '';
+                                
+                                // Process the stream in smaller chunks
+                                return new Promise((resolve, reject) => {
+                                    function readChunk() {
+                                        reader.read().then(({ done, value }) => {
+                                            if (done) {
+                                                resolve(buffer);
+                                                return;
+                                            }
+                                            
+                                            try {
+                                                // Decode this chunk
+                                                const text = decoder.decode(value, { stream: true });
+                                                buffer += text;
+                                                
+                                                // Update the display
+                                                outputDisplay.textContent = buffer;
+                                                
+                                                // Auto-scroll to bottom
+                                                outputDisplay.scrollTop = outputDisplay.scrollHeight;
+                                                
+                                                // Continue reading
+                                                readChunk();
+                                            } catch (e) {
+                                                reject(e);
+                                            }
+                                        }).catch(error => {
+                                            reject(error);
+                                        });
+                                    }
+                                    
+                                    // Start reading the stream
+                                    readChunk();
+                                });
+                            })
+                            .then(finalText => {
+                                // Apply final formatting when stream is complete
+                                if (finalText.includes('--- ERRORS ---') || 
+                                    finalText.includes('Error during') ||
+                                    finalText.includes('Error detected during processing')) {
+                                    
+                                    // Create styled HTML content with errors in red
+                                    outputDisplay.innerHTML = formatOutputWithErrorHighlighting(finalText);
+                                    
+                                    // Change the background color of the output to indicate error
+                                    outputDisplay.style.backgroundColor = '#fff0f0';
+                                    outputDisplay.style.borderLeft = '4px solid #f56565';
+                                }
+                                
+                                // Make sure we're scrolled to the bottom
+                                outputDisplay.scrollTop = outputDisplay.scrollHeight;
+                            })
+                            .catch(error => {
+                                // Clear the timeout if there was an error
+                                clearTimeout(timeoutId);
+                                
+                                // Try to gracefully handle failed requests
+                                const errorMsg = error.name === 'AbortError' 
+                                    ? 'Request was aborted due to timeout. The ingestion process might still be running in the background.'
+                                    : error.message || 'Failed to connect to the ingestion service';
+                                
+                                outputDisplay.textContent += `\n\nError: ${errorMsg}\n`;
+                                
+                                if (error.name !== 'AbortError') {
+                                    // For non-abort errors, provide more information
+                                    outputDisplay.textContent += '\nSuggestions:\n';
+                                    outputDisplay.textContent += '- The server might be processing a large workload\n';
+                                    outputDisplay.textContent += '- Try refreshing the page to see if the process completed\n';
+                                    outputDisplay.textContent += '- Check server logs for more information\n';
+                                }
+                                
+                                console.error('Fetch error:', error);
+                            });
+                        }
+                        
+                        // Helper function to format output with error highlighting
+                        function formatOutputWithErrorHighlighting(text) {
+                            // First, ensure we have the text as a string
+                            text = String(text);
+                            
+                            // Preserve leading/trailing whitespace by adding a marker
+                            text = '●START●' + text + '●END●';
+                            
+                            // Split by error section markers and add appropriate styling
+                            const sections = text.split(/(---.*?---)/);
+                            let formattedOutput = '';
+                            
+                            let inErrorSection = false;
+                            for (let i = 0; i < sections.length; i++) {
+                                const section = sections[i];
+                                
+                                // Is this a section marker?
+                                if (section.match(/---.*?---/)) {
+                                    // Check if it's an error section
+                                    if (section.includes('ERRORS') || 
+                                        section.includes('STDERR') || 
+                                        section.includes('TRACEBACK')) {
+                                        formattedOutput += `<strong class="text-red-600">${section}</strong>`;
+                                        inErrorSection = true;
+                                    } else {
+                                        formattedOutput += `<strong>${section}</strong>`;
+                                        inErrorSection = false;
+                                    }
+                                } else {
+                                    // Regular content
+                                    // Replace newlines with <br> tags, but preserve consecutive newlines
+                                    const processedSection = section.replace(/\n(\s*\n)+/g, match => {
+                                        // For groups of newlines, create the same number of <br> tags
+                                        return match.split('\n').map(() => '<br>').join('');
+                                    }).replace(/\n/g, '<br>');
+                                    
+                                    if (inErrorSection) {
+                                        formattedOutput += `<span class="text-red-600">${processedSection}</span>`;
+                                    } else {
+                                        formattedOutput += processedSection;
+                                    }
+                                }
+                            }
+                            
+                            // Also highlight specific error terms wherever they appear
+                            const errorTerms = [
+                                /(Error:.*?)(<br>|$)/g,
+                                /(Exception:.*?)(<br>|$)/g,
+                                /(Error detected.*?)(<br>|$)/g,
+                                /(Traceback.*?)(<br>|$)/g,
+                                /(Failed.*?)(<br>|$)/g
+                            ];
+                            
+                            for (const pattern of errorTerms) {
+                                formattedOutput = formattedOutput.replace(
+                                    pattern, 
+                                    '<span class="text-red-600 font-semibold">$1</span>$2'
+                                );
+                            }
+                            
+                            // Remove the markers added earlier
+                            formattedOutput = formattedOutput.replace('●START●', '').replace('●END●', '');
+                            
+                            // Set CSS to preserve whitespace formatting
+                            return `<div style="white-space: pre-wrap;">${formattedOutput}</div>`;
+                        }
+                    </script>
+                </div>
+            </div>
+        </div>
+        <!-- Step 5 -->
+        <div class="mb-8">
+            <div tabindex="0"
+                 class="collapse collapse-arrow border border-base-300 bg-base-100 rounded-box">
+                <input type="checkbox" class="peer" />
+                <!-- This input controls the collapse state -->
+                <div class="collapse-title text-xl font-medium text-gray-800 peer-checked:text-primary">
+                    Step 5s: Request Collection Addition
+                </div>
+                <div class="collapse-content peer-checked:block">
+                    <p class="text-gray-600 mb-4">
+                        After uploading your file, email
+                        <a href="mailto:genie@cs.stanford.edu"
+                           class="text-blue-600 hover:underline font-semibold">genie@cs.stanford.edu</a> to request the
+                        addition of your collection. You will receive a confirmation email with details on how to access
+                        the
+                        search API once your collection is added.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- external upload page script -->
+<script src="/public/js/upload.js" defer></script>
+{% endblock content %}
