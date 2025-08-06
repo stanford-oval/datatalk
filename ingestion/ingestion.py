@@ -545,7 +545,7 @@ def process_csv(
 
     
     data_path = csv_filepath
-    if "special_processing_fcn" in csv_filepath_or_dict:
+    if "special_processing_fcn" in csv_filepath_or_dict and csv_filepath_or_dict["special_processing_fcn"]:
         if type(csv_filepath_or_dict["special_processing_fcn"]) is str:
             special_processing_fcn = eval(csv_filepath_or_dict["special_processing_fcn"])
         else:
