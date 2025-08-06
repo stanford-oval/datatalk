@@ -885,8 +885,11 @@ def create_table_for_df(
 def load_declaration_file(
     csvfile_path
 ):
-    with open(csvfile_path, mode='r', newline='') as csvfile:
+    with open(csvfile_path, mode='r', newline='', encoding='utf-8-sig') as csvfile:
         reader = csv.DictReader(csvfile)
+        # Clean BOM character from field names if present
+        if reader.fieldnames:
+            reader.fieldnames = [field.lstrip('\ufeff') for field in reader.fieldnames]
         return [row for row in reader]
 
 def process_all_csvs(
@@ -935,6 +938,7 @@ def process_all_csvs(
         all_csv_file_paths = load_declaration_file(all_csv_file_paths)
     
     if not lookup_table_path:
+        print(f"all_csv_file_paths: {all_csv_file_paths}")
         if type(all_csv_file_paths[0]) is str:
             lookup_table_path = os.path.join(os.path.dirname(all_csv_file_paths[0]), "_lookup_table.csv")
         else:
@@ -975,14 +979,24 @@ def process_all_csvs(
     os.chmod(lookup_table_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH)
     
 if __name__ == "__main__": 
-    for i in range(11, 30):
+    for i in range(1, 101):
         declarations = []
         declarations += [
             {
                 "csv_filepath": f"/data1/insight-bench/data/notebooks/csvs/flag-{i}.csv",
             }
-
         ]
+        
+        # Check if sysuser file exists and add it to declarations if it does
+        sysuser_filepath = f"/data1/insight-bench/data/notebooks/csvs/flag-{i}-sysuser.csv"
+        if os.path.exists(sysuser_filepath):
+            declarations += [
+                {
+                    "csv_filepath": sysuser_filepath,
+                }
+            ]
+            print(f"Added sysuser file for flag-{i}")
+            
         process_all_csvs(
             declarations,
             "insight_bench",
