@@ -1,6 +1,6 @@
 # DataTalk
 
-**For an investigative journalism–focused demo of DataTalk, take a look at datatalk.biglocalnews.org**
+**For an investigative journalism–focused demo of DataTalk, take a look at** [Datatalk hosted by Stanford Big Local News](datatalk.biglocalnews.org)
 
 DataTalk is a comprehensive NL2SQL (Natural Language to SQL) system that allows users to upload CSV files and query them using natural language. The system consists of two main components: data ingestion and an intelligent agent for natural language query processing.
 
@@ -175,7 +175,3 @@ The system is designed to be modular and extensible. Key areas for contribution:
 - Enhanced NL2SQL capabilities
 - Improved web interface
 - Performance optimizations
-
-## License
-
-[License information would go here]
